@@ -14,24 +14,53 @@ const main = () => {
   const io = SocketIO(http);
 
   let state = {
-    users: {}
+    users: {},
+    games: {}
   };
-  const updateState = x => u(x, state);
+  const updateState = (x, fn = () => {}) => {
+    state = u(x, state);
+    fn(state);
+  };
 
   io.on('connection', socket => {
-    const id = uuid();
-    let currentUser = { id };
+    let id = uuid();
+    let user = { id };
+    const updateUser = (update, newId) => {
+      if (newId) id = newId;
+      user = { ...user, ...update, id: newId || id };
+    };
 
     log(`user "${id}" connected`);
-    updateState({ users: { [id]: currentUser } });
+    updateState({ users: { [id]: user } });
 
-    socket.on('client::init', (_, fn) => fn(currentUser));
+    socket.on('client::init', (lsUser, fn) => {
+      updateUser(lsUser, lsUser?.id);
+      fn({ user, games: state.games });
+    });
 
     socket.on('client::updateUser', (update, fn) => {
-      currentUser = { ...currentUser, ...update, id };
-      updateState({ users: { [id]: currentUser } });
-      fn(currentUser);
+      updateUser(update);
+      updateState({ users: { [id]: user } });
+      fn(user);
     });
+
+    socket.on(
+      'client::newGame',
+      ({ numberOfShips, shotsPerTurn, dimensions }) => {
+        const game = {
+          id: uuid(),
+          host: id,
+          hostName: user.name,
+          numberOfShips,
+          shotsPerTurn,
+          dimensions
+        };
+        log('new game: ', game);
+        updateState({ games: { [game.id]: game } }, state => {
+          io.sockets.emit('server::games', state.games);
+        });
+      }
+    );
 
     socket.on('disconnect', () => {
       log(`user "${id}" disconnected`);
