@@ -72,7 +72,7 @@ const main = () => {
 
     socket.on(
       'client::newGame',
-      ({ numberOfShips, shotsPerTurn, dimensions }) => {
+      ({ numberOfShips, shotsPerTurn, dimensions }, fn) => {
         const gameId = uuid();
         const game = {
           id: gameId,
@@ -84,6 +84,7 @@ const main = () => {
         };
         log('new game: ', game);
         updateGame({ gameId, update: game });
+        fn(game);
       }
     );
 
