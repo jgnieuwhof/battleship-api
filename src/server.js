@@ -6,6 +6,7 @@ import u from 'updeep';
 import { mapValues, pick } from 'lodash';
 
 import { port } from './config';
+import state, { updateUser, removeUser, updateGame } from './state';
 
 const { log } = console;
 
@@ -14,59 +15,32 @@ const main = () => {
   const http = Server(app);
   const io = SocketIO(http);
 
-  let state = {
-    users: {},
-    games: {}
-  };
-
-  const updateState = (x, fn = () => {}) => {
-    state = u(x, state);
-    log(state);
-    fn(state);
-  };
-
-  const updateGame = ({ gameId, update }) => {
-    updateState({ games: { [gameId]: update } }, state => {
-      const broadcastKeys = [
-        'id',
-        'host',
-        'hostName',
-        'opponent',
-        'opponentName'
-      ];
-      if (Object.keys(update).some(k => broadcastKeys.includes(k))) {
-        log('broadcast games');
-        io.sockets.emit(
-          'server::games',
-          mapValues(state.games, g => pick(g, broadcastKeys))
-        );
-      }
-    });
-  };
-
-  const broadcastGames = ({ state }) => {};
+  const gamesKeys = ['id', 'host', 'hostName', 'opponent', 'opponentName'];
+  const getGames = () => mapValues(state.games, g => pick(g, gamesKeys));
+  const broadcastGames = () => io.sockets.emit('server::games', getGames());
 
   io.on('connection', socket => {
     let id = uuid();
 
-    const updateUser = (update, newId) => {
-      if (newId && newId !== id) {
-        updateState({ users: u.omit(id) });
-        id = newId;
-      }
-      updateState({ users: { [id]: { ...update, id } } });
+    const broadcastGame = gameId => {
+      socket.to(gameId).emit('server::game', state.games[gameId]);
+      socket.emit('server::game', state.games[gameId]);
     };
 
     log(`user "${id}" connected`);
-    updateState({ users: { [id]: { id } } });
+    updateUser(id, { id });
 
     socket.on('client::init', (lsUser, fn) => {
-      updateUser(lsUser, lsUser?.id);
-      fn({ user: state.users[id], games: state.games });
+      if (lsUser?.id && lsUser.id !== id) {
+        removeUser(id);
+        id = lsUser.id;
+      }
+      updateUser(id, lsUser);
+      fn(state.users[id]);
     });
 
     socket.on('client::updateUser', (update, fn) => {
-      updateUser(update);
+      updateUser(id, update);
       fn(state.users[id]);
     });
 
@@ -82,23 +56,29 @@ const main = () => {
           shotsPerTurn,
           dimensions
         };
-        log('new game: ', game);
-        updateGame({ gameId, update: game });
+        updateGame(gameId, game);
+        broadcastGames();
         fn(game);
       }
     );
 
-    socket.on('client::game', ({ gameId }, fn) => fn(state.games[gameId]));
+    socket.on('client::games', (_, fn) => fn(getGames()));
 
-    socket.on('client::joinGame', ({ gameId }) =>
-      updateGame({
-        gameId,
-        update: { opponent: id, opponentName: state.users[id].name }
-      })
-    );
+    socket.on('client::joinRoom', ({ gameId }, fn) => {
+      if (state.users[id].room) socket.leave(state.users[id].room);
+      socket.join(gameId);
+      updateUser(id, { room: gameId });
+      fn(state.games[gameId]);
+    });
+
+    socket.on('client::acceptGame', ({ gameId }) => {
+      updateGame(gameId, { opponent: id, opponentName: state.users[id].name });
+      broadcastGame(gameId);
+      broadcastGames();
+    });
 
     socket.on('disconnect', () => {
-      updateState({ users: u.omit(id) });
+      removeUser(id);
       log(`user "${id}" disconnected`);
     });
   });
