@@ -17,6 +17,7 @@
     "babel-polyfill": "^6.26.0",
     "dotenv": "^6.1.0",
     "express": "^4.16.4",
+    "lodash": "^4.17.11",
     "socket.io": "^2.2.0",
     "updeep": "^1.1.0",
     "uuid": "^3.3.2"
