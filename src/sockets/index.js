@@ -5,6 +5,8 @@ import newGame from './newGame';
 import updateUser from './updateUser';
 import userInit from './userInit';
 
+import { publicView as pg } from '../model/game';
+
 const sockets = {
   'client::acceptGame': acceptGame,
   'client::games': games,
@@ -17,10 +19,11 @@ const sockets = {
 const init = ({ io, socket, db, user }) => {
   const actions = {
     broadcastGame: ({ gameId }) => {
-      socket.to(gameId).emit('server::game', db.games[gameId]);
-      socket.emit('server::game', db.games[gameId]);
+      socket.to(gameId).emit('server::game', db.get('games', gameId, pg));
+      socket.emit('server::game', db.get('games', gameId, pg));
     },
-    broadcastGames: () => io.sockets.emit('server::games', db.gamesSummary())
+    broadcastGames: () =>
+      io.sockets.emit('server::games', db.getAll('games', pg))
   };
   Object.keys(sockets).forEach(event => {
     socket.on(event, sockets[event]({ io, socket, db, user, actions }));

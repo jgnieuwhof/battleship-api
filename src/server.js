@@ -15,17 +15,11 @@ const main = () => {
   const app = express();
   const http = Server(app);
   const io = SocketIO(http);
+
   const db = initState({
     users: {},
     games: {}
   });
-  db.configView('games', 'gamesSummary', [
-    'id',
-    'host',
-    'hostName',
-    'opponent',
-    'opponentName'
-  ]);
 
   io.on('connection', socket => {
     const user = initState({
@@ -33,7 +27,7 @@ const main = () => {
     });
 
     log(`user "${user.id}" connected`);
-    db.update('users', user.id, { id: user.id });
+    db.update('users', user.id, { id: user.id, socketId: socket.id });
 
     initSocket({ io, socket, db, user });
 

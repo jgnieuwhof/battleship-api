@@ -1,10 +1,12 @@
 import u from 'updeep';
-import { mapValues, pick } from 'lodash';
+import { mapValues } from 'lodash';
 
 const init = (initialState = {}) => {
   let state = initialState;
 
-  state.get = (type, id) => state[type][id];
+  state.get = (type, id, fn = x => x) => fn(state[type][id]);
+
+  state.getAll = (type, fn = x => x) => mapValues(state[type], fn);
 
   state.updateScalar = (key, value) => (state[key] = value);
 
@@ -13,12 +15,13 @@ const init = (initialState = {}) => {
     console.log(state);
   };
 
-  state.configView = (type, viewName, keys) => {
-    state[`${viewName}Keys`] = keys;
-    state[viewName] = () => mapValues(state[type], x => pick(x, keys));
-  };
-
   state.remove = (type, id) => (state[type] = u(u.omit(id), state[type]));
+
+  state.changeId = (type, id, newId) => {
+    const oldObj = state.get(type, id);
+    state.remove(type, id);
+    state.update(type, newId, oldObj);
+  };
 
   return state;
 };
