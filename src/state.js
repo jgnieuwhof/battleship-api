@@ -1,29 +1,24 @@
 import u from 'updeep';
+import { mapValues, pick } from 'lodash';
 
-let state = {
-  users: {},
-  games: {}
+const init = (initialState = {}) => {
+  let state = initialState;
+
+  state.updateScalar = (key, value) => (state[key] = value);
+
+  state.update = (type, id, update) => {
+    state[type] = u({ [id]: { ...update, id } }, state[type]);
+    console.log(state);
+  };
+
+  state.configView = (type, viewName, keys) => {
+    state[`${viewName}Keys`] = keys;
+    state[viewName] = () => mapValues(state[type], x => pick(x, keys));
+  };
+
+  state.remove = (type, id) => (state[type] = u(u.omit(id), state[type]));
+
+  return state;
 };
 
-export const updateState = x => {
-  state = u(x, state);
-  console.log(state);
-};
-
-export const updateUser = (id, user) => {
-  state.users = u({ [id]: { ...user, id } }, state.users);
-};
-
-export const removeUser = id => {
-  state.users = u(u.omit(id), state.users);
-};
-
-export const updateGame = (id, game) => {
-  state.games = u({ [id]: { ...game, id } }, state.games);
-};
-
-export const removeGame = id => {
-  state.games = u(u.omit(id), state.users);
-};
-
-export default state;
+export default init;

@@ -6,7 +6,8 @@ import u from 'updeep';
 import { mapValues, pick } from 'lodash';
 
 import { port } from './config';
-import state, { updateUser, removeUser, updateGame } from './state';
+import initState from './state';
+import initSocket from './sockets';
 
 const { log } = console;
 
@@ -14,72 +15,31 @@ const main = () => {
   const app = express();
   const http = Server(app);
   const io = SocketIO(http);
-
-  const gamesKeys = ['id', 'host', 'hostName', 'opponent', 'opponentName'];
-  const getGames = () => mapValues(state.games, g => pick(g, gamesKeys));
-  const broadcastGames = () => io.sockets.emit('server::games', getGames());
+  const db = initState({
+    users: {},
+    games: {}
+  });
+  db.configView('games', 'gamesSummary', [
+    'id',
+    'host',
+    'hostName',
+    'opponent',
+    'opponentName'
+  ]);
 
   io.on('connection', socket => {
-    let id = uuid();
-
-    const broadcastGame = gameId => {
-      socket.to(gameId).emit('server::game', state.games[gameId]);
-      socket.emit('server::game', state.games[gameId]);
-    };
-
-    log(`user "${id}" connected`);
-    updateUser(id, { id });
-
-    socket.on('client::init', (lsUser, fn) => {
-      if (lsUser?.id && lsUser.id !== id) {
-        removeUser(id);
-        id = lsUser.id;
-      }
-      updateUser(id, lsUser);
-      fn(state.users[id]);
+    const user = initState({
+      id: uuid()
     });
 
-    socket.on('client::updateUser', (update, fn) => {
-      updateUser(id, update);
-      fn(state.users[id]);
-    });
+    log(`user "${user.id}" connected`);
+    db.update('users', user.id, { id: user.id });
 
-    socket.on(
-      'client::newGame',
-      ({ numberOfShips, shotsPerTurn, dimensions }, fn) => {
-        const gameId = uuid();
-        const game = {
-          id: gameId,
-          host: id,
-          hostName: state.users[id].name,
-          numberOfShips,
-          shotsPerTurn,
-          dimensions
-        };
-        updateGame(gameId, game);
-        broadcastGames();
-        fn(game);
-      }
-    );
-
-    socket.on('client::games', (_, fn) => fn(getGames()));
-
-    socket.on('client::joinRoom', ({ gameId }, fn) => {
-      if (state.users[id].room) socket.leave(state.users[id].room);
-      socket.join(gameId);
-      updateUser(id, { room: gameId });
-      fn(state.games[gameId]);
-    });
-
-    socket.on('client::acceptGame', ({ gameId }) => {
-      updateGame(gameId, { opponent: id, opponentName: state.users[id].name });
-      broadcastGame(gameId);
-      broadcastGames();
-    });
+    initSocket({ io, socket, db, user });
 
     socket.on('disconnect', () => {
-      removeUser(id);
-      log(`user "${id}" disconnected`);
+      db.remove('users', user.id);
+      log(`user "${user.id}" disconnected`);
     });
   });
 
