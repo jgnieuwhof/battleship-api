@@ -4,6 +4,8 @@ import { mapValues, pick } from 'lodash';
 const init = (initialState = {}) => {
   let state = initialState;
 
+  state.get = (type, id) => state[type][id];
+
   state.updateScalar = (key, value) => (state[key] = value);
 
   state.update = (type, id, update) => {

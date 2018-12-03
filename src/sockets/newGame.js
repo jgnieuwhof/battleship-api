@@ -8,7 +8,7 @@ const newGame = ({ io, db, user, actions }) => (
   const game = {
     id: gameId,
     host: user.id,
-    hostName: db.users[user.id].name,
+    hostName: db.get('users', user.id).name,
     numberOfShips,
     shotsPerTurn,
     dimensions

@@ -1,8 +1,9 @@
 const joinRoom = ({ db, socket, user }) => ({ gameId }, fn) => {
-  if (db.users[user.id].room) socket.leave(db.users[user.id].room);
+  const dbUser = db.get('users', user.id);
+  if (dbUser.room) socket.leave(dbUser.room);
   socket.join(gameId);
   db.update('users', user.id, { room: gameId });
-  fn(db.games[gameId]);
+  fn(db.get('games', gameId));
 };
 
 export default joinRoom;
