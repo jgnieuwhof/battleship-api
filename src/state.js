@@ -11,7 +11,12 @@ const init = (initialState = {}) => {
   state.updateScalar = (key, value) => (state[key] = value);
 
   state.update = (type, id, update) => {
-    state[type] = u({ [id]: { ...update, id } }, state[type]);
+    state[type] = u(
+      {
+        [id]: { ...update, id }
+      },
+      state[type]
+    );
     console.log(state);
   };
 

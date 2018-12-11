@@ -14,11 +14,12 @@ const newGame = ({ io, db, user, actions }) => (
     hostName: db.get('users', user.id).name,
     numberOfShips,
     shotsPerTurn,
-    dimensions
+    dimensions,
+    events: []
   };
   db.update('games', gameId, game);
   actions.broadcastGames();
-  fn(pg(game));
+  fn({ id: gameId });
 };
 
 export default newGame;

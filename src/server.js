@@ -18,21 +18,26 @@ const main = () => {
 
   const db = initState({
     users: {},
-    games: {}
+    sockets: {},
+    games: {},
+    events: {}
   });
 
   io.on('connection', socket => {
     const user = initState({
-      id: uuid()
+      id: uuid(),
+      socketId: socket.id
     });
 
     log(`user "${user.id}" connected`);
     db.update('users', user.id, { id: user.id, socketId: socket.id });
+    db.update('sockets', socket.id, { id: socket.id, userId: user.id });
 
     initSocket({ io, socket, db, user });
 
     socket.on('disconnect', () => {
       db.remove('users', user.id);
+      db.remove('sockets', socket.id);
       log(`user "${user.id}" disconnected`);
     });
   });
