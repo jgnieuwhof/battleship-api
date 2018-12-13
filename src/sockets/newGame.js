@@ -13,7 +13,8 @@ const newGame = ({ io, db, user, actions }) => (
     numberOfShips,
     shotsPerTurn,
     dimensions,
-    events: []
+    events: [],
+    boards: {}
   };
   db.update('games', gameId, game);
   actions.broadcastGames();

@@ -1,4 +1,5 @@
-import { pick } from 'lodash';
+import { pick, difference } from 'lodash';
+import u from 'updeep';
 
 import acceptGame from './acceptGame';
 import games from './games';
@@ -21,37 +22,47 @@ const sockets = {
   'client::gameEvent': gameEvent
 };
 
-const socketsInRoom = ({ io, roomId }) =>
-  new Promise(r => io.in(roomId).clients((e, x) => r(x)));
+const socketsInGame = ({ io, gameId }) =>
+  new Promise(r => io.in(gameId).clients((e, x) => r(x)));
+
+const applicableSockets = ({ io, socket, gameId, toRoom }) =>
+  toRoom ? socketsInGame({ io, gameId }) : [socket.id];
 
 const init = ({ io, socket, db, user }) => {
   const actions = {
     broadcastEvent: async ({ gameId, event, toRoom = true }) => {
       const events = event ? [event] : db.get('games', gameId).events;
-      const sockets = toRoom
-        ? await socketsInRoom({ io, roomId: gameId })
-        : [socket.id];
-      sockets.forEach(socketId =>
-        io.to(socketId).emit(
-          'server::gameEvents',
-          events.map(event =>
-            eventModel.eventForUser({
-              event,
-              userId: db.get('sockets', socketId).userId
-            })
+      (await applicableSockets({ io, socket, gameId, toRoom })).forEach(
+        socketId =>
+          io.to(socketId).emit(
+            'server::gameEvents',
+            events.map(event =>
+              eventModel.eventForUser({
+                event,
+                userId: db.get('sockets', socketId).userId
+              })
+            )
           )
-        )
       );
     },
-    broadcastGame: ({ gameId, toRoom = true }) => {
-      if (toRoom) {
-        io.to(gameId).emit(
-          'server::game',
-          db.get('games', gameId, gameModel.pv)
-        );
-      } else {
-        socket.emit('server::game', db.get('games', gameId, gameModel.pv));
-      }
+    broadcastGame: async ({ gameId, toRoom = true }) => {
+      (await applicableSockets({ io, socket, gameId, toRoom })).forEach(
+        socketId => {
+          const userId = db.get('sockets', socketId).userId;
+          const game = db.get('games', gameId);
+          io.to(socketId).emit(
+            'server::game',
+            u(
+              {
+                boards: u.omit(
+                  difference(Object.keys(game.boards || {}), [userId])
+                )
+              },
+              game
+            )
+          );
+        }
+      );
     },
     broadcastGames: () =>
       io.sockets.emit('server::games', db.getAll('games', gameModel.pv))
