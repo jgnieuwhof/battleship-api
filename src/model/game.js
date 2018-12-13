@@ -1,6 +1,6 @@
 import { pick } from 'lodash';
 
-export const publicView = game =>
+const publicView = game =>
   pick(game, [
     'id',
     'state',
@@ -12,3 +12,8 @@ export const publicView = game =>
     'shotsPerTurn',
     'dimensions'
   ]);
+
+export default {
+  publicView,
+  pv: publicView
+};

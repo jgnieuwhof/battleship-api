@@ -8,8 +8,8 @@ import updateUser from './updateUser';
 import userInit from './userInit';
 import gameEvent from './gameEvent';
 
-import { gameEvent as gec } from '../common/constants';
-import { publicView as pg } from '../model/game';
+import gameModel from '../model/game';
+import eventModel from '../model/event';
 
 const sockets = {
   'client::acceptGame': acceptGame,
@@ -19,16 +19,6 @@ const sockets = {
   'client::userInit': userInit,
   'client::updateUser': updateUser,
   'client::gameEvent': gameEvent
-};
-
-const publicContentForEvent = ({ event }) => {
-  switch (event.type) {
-    case gec.placeShip:
-      return [''];
-    default:
-      console.log(`ERROR: unknown event type "${event.type}"`);
-      return [];
-  }
 };
 
 const socketsInRoom = ({ io, roomId }) =>
@@ -41,29 +31,30 @@ const init = ({ io, socket, db, user }) => {
       const sockets = toRoom
         ? await socketsInRoom({ io, roomId: gameId })
         : [socket.id];
-
       sockets.forEach(socketId =>
         io.to(socketId).emit(
           'server::gameEvents',
-          events.map(event => ({
-            ...event,
-            content:
-              db.get('sockets', socketId).userId === event.userId
-                ? event.content
-                : pick(event, publicContentForEvent({ event }))
-          }))
+          events.map(event =>
+            eventModel.eventForUser({
+              event,
+              userId: db.get('sockets', socketId).userId
+            })
+          )
         )
       );
     },
     broadcastGame: ({ gameId, toRoom = true }) => {
       if (toRoom) {
-        io.to(gameId).emit('server::game', db.get('games', gameId, pg));
+        io.to(gameId).emit(
+          'server::game',
+          db.get('games', gameId, gameModel.pv)
+        );
       } else {
-        socket.emit('server::game', db.get('games', gameId, pg));
+        socket.emit('server::game', db.get('games', gameId, gameModel.pv));
       }
     },
     broadcastGames: () =>
-      io.sockets.emit('server::games', db.getAll('games', pg))
+      io.sockets.emit('server::games', db.getAll('games', gameModel.pv))
   };
   Object.keys(sockets).forEach(event => {
     socket.on(event, sockets[event]({ io, socket, db, user, actions }));
