@@ -1,10 +1,10 @@
 import { pick } from 'lodash';
 
-import { gameEvent } from '../common/constants';
+import { gameEvents } from '../common/constants';
 
 const publicContentForEvent = ({ event }) => {
   switch (event.type) {
-    case gameEvent.placeShip:
+    case gameEvents.placeShip:
       return [''];
     default:
       console.log(`ERROR: unknown event type "${event.type}"`);

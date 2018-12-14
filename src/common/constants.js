@@ -1,3 +1,4 @@
-export const gameEvent = {
-  placeShip: 'placeShip'
+export const gameEvents = {
+  placeShip: 'placeShip',
+  playing: 'playing'
 };
