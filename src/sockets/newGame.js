@@ -1,5 +1,7 @@
 import uuid from 'uuid/v4';
 
+import { gameStates } from '../common/constants';
+
 const newGame = ({ io, db, user, actions }) => (
   { numberOfShips, shotsPerTurn, dimensions },
   fn
@@ -7,7 +9,7 @@ const newGame = ({ io, db, user, actions }) => (
   const gameId = uuid();
   const game = {
     id: gameId,
-    state: 'matchmaking',
+    state: gameStates.matchmaking,
     host: user.id,
     hostName: db.get('users', user.id).name,
     numberOfShips,

@@ -1,20 +1,23 @@
 import uuid from 'uuid/v4';
 import u from 'updeep';
 
-import { gameEvents } from '../common/constants';
+import { gameEvents, gameStates } from '../common/constants';
+
+const numberOfPlacedShips = ({ game: { boards } }) =>
+  Object.values(boards).reduce(
+    (sum, b) => sum + (b.ships || []).reduce(sum => sum + 1, 0),
+    0
+  );
 
 const gameUpdateFromEvent = ({ game, event }) => {
   switch (event.type) {
     case gameEvents.placeShip:
       const { x, y, rotation, id, length } = event.content;
-      const numberOfPlacedShips = Object.values(game.boards).reduce(
-        (sum, b) => sum + (b.ships || []).reduce(sum => sum + 1, 0),
-        0
-      );
-      const isFinishedPlacing =
-        numberOfPlacedShips + 1 === game.numberOfShips * 2;
       return {
-        ...(isFinishedPlacing && { state: gameEvents.playing }),
+        ...(numberOfPlacedShips({ game }) + 1 === game.numberOfShips * 2 && {
+          state: gameStates.playing,
+          turn: game.host
+        }),
         boards: {
           [event.userId]: {
             ships: ships => [...(ships || []), { x, y, rotation, id, length }]
@@ -39,7 +42,7 @@ const gameEvent = ({ db, user, actions }) => ({ gameId, type, content }) => {
     events: x => [...x, event],
     ...gameUpdateFromEvent({ game, event })
   });
-  actions.broadcastGame({ gameId, toRoom: false });
+  actions.broadcastGame({ gameId });
   actions.broadcastEvent({ gameId, event });
 };
 
