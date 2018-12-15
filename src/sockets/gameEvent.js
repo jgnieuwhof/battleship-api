@@ -14,6 +14,14 @@ const numberOfPlacedShips = ({ game: { boards } }) =>
 const otherUser = ({ game, userId }) =>
   userId === game.host ? game.opponent : game.host;
 
+const isHit = ({ ships }, [x, y]) =>
+  ships.some(
+    s =>
+      s.rotation === 'h'
+        ? x >= s.x && x < s.x + s.length && y === s.y
+        : y >= s.y && y < s.y + s.length && x === s.x
+  );
+
 const gameUpdateFromEvent = ({ game, event }) => {
   let getUpdate = () => ({});
   switch (event.type) {
@@ -36,11 +44,15 @@ const gameUpdateFromEvent = ({ game, event }) => {
     case gameEvents.guess:
       getUpdate = () => {
         const { x, y } = event.content;
+        const boardId = otherUser({ game, userId: event.userId });
         return {
           turn: otherUser({ game, userId: game.turn }),
           boards: {
-            [otherUser({ game, userId: event.userId })]: {
-              guesses: guesses => [...(guesses || []), { x, y }]
+            [boardId]: {
+              guesses: guesses => [
+                ...(guesses || []),
+                { x, y, isHit: isHit(game.boards[boardId], [x, y]) }
+              ]
             }
           }
         };
