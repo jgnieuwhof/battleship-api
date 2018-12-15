@@ -17,7 +17,6 @@ const init = (initialState = {}) => {
       },
       state[type]
     );
-    console.log(state);
     return state.get(type, id);
   };
 
