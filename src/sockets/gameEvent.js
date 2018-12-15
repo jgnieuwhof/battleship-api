@@ -81,25 +81,27 @@ const getWinner = game =>
 
 const gameEvent = ({ db, user, actions }) => ({ gameId, type, content }) => {
   const game = db.get('games', gameId);
-  const event = {
-    id: uuid(),
-    time: Date.now(),
-    userId: user.id,
-    type,
-    content
-  };
-  const updatedGame = db.update('games', gameId, {
-    events: x => [...x, event],
-    ...gameUpdateFromEvent({ game, event })
-  });
-  if (getWinner(updatedGame)) {
-    db.update('games', gameId, {
-      state: 'done',
-      winner: getWinner(updatedGame)
+  if (game) {
+    const event = {
+      id: uuid(),
+      time: Date.now(),
+      userId: user.id,
+      type,
+      content
+    };
+    const updatedGame = db.update('games', gameId, {
+      events: x => [...x, event],
+      ...gameUpdateFromEvent({ game, event })
     });
+    if (getWinner(updatedGame)) {
+      db.update('games', gameId, {
+        state: 'done',
+        winner: getWinner(updatedGame)
+      });
+    }
+    actions.broadcastGame({ gameId });
+    actions.broadcastEvent({ gameId, event });
   }
-  actions.broadcastGame({ gameId });
-  actions.broadcastEvent({ gameId, event });
 };
 
 export default gameEvent;
