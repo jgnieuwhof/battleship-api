@@ -5,5 +5,6 @@ export const gameStates = {
 };
 
 export const gameEvents = {
-  placeShip: 'placeShip'
+  placeShip: 'placeShip',
+  guess: 'guess'
 };

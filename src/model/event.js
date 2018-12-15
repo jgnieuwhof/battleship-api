@@ -6,6 +6,8 @@ const publicContentForEvent = ({ event }) => {
   switch (event.type) {
     case gameEvents.placeShip:
       return [''];
+    case gameEvents.guess:
+      return ['x', 'y'];
     default:
       console.log(`ERROR: unknown event type "${event.type}"`);
       return [];

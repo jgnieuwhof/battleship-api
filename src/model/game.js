@@ -8,8 +8,6 @@ const publicView = game =>
     'hostName',
     'opponent',
     'opponentName',
-    'numberOfShips',
-    'shotsPerTurn',
     'dimensions'
   ]);
 
