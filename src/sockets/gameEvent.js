@@ -14,8 +14,8 @@ const numberOfPlacedShips = ({ game: { boards } }) =>
 const otherUser = ({ game, userId }) =>
   userId === game.host ? game.opponent : game.host;
 
-const isHit = ({ ships }, [x, y]) =>
-  ships.some(
+const getShipIfHit = ({ ships }, [x, y]) =>
+  ships.find(
     s =>
       s.rotation === 'h'
         ? x >= s.x && x < s.x + s.length && y === s.y
@@ -45,13 +45,23 @@ const gameUpdateFromEvent = ({ game, event }) => {
       getUpdate = () => {
         const { x, y } = event.content;
         const boardId = otherUser({ game, userId: event.userId });
+        const hitShip = getShipIfHit(game.boards[boardId], [x, y]);
         return {
           turn: otherUser({ game, userId: game.turn }),
           boards: {
             [boardId]: {
+              ...(hitShip && {
+                ships: ships =>
+                  ships.map(
+                    s =>
+                      s.id === hitShip.id
+                        ? { ...s, hits: [...(s.hits || []), { x, y }] }
+                        : s
+                  )
+              }),
               guesses: guesses => [
                 ...(guesses || []),
-                { x, y, isHit: isHit(game.boards[boardId], [x, y]) }
+                { x, y, isHit: !!hitShip }
               ]
             }
           }
@@ -62,6 +72,13 @@ const gameUpdateFromEvent = ({ game, event }) => {
   return getUpdate();
 };
 
+const getWinner = game =>
+  [game.host, game.opponent].find(
+    id =>
+      game.boards[id].ships &&
+      game.boards[id].ships.every(s => (s.hits || []).length === s.length)
+  );
+
 const gameEvent = ({ db, user, actions }) => ({ gameId, type, content }) => {
   const game = db.get('games', gameId);
   const event = {
@@ -71,10 +88,16 @@ const gameEvent = ({ db, user, actions }) => ({ gameId, type, content }) => {
     type,
     content
   };
-  db.update('games', gameId, {
+  const updatedGame = db.update('games', gameId, {
     events: x => [...x, event],
     ...gameUpdateFromEvent({ game, event })
   });
+  if (getWinner(updatedGame)) {
+    db.update('games', gameId, {
+      state: 'done',
+      winner: getWinner(updatedGame)
+    });
+  }
   actions.broadcastGame({ gameId });
   actions.broadcastEvent({ gameId, event });
 };
