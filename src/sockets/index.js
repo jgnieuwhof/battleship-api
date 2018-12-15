@@ -1,4 +1,4 @@
-import { pick, difference } from 'lodash';
+import { pick, without } from 'lodash';
 import u from 'updeep';
 
 import acceptGame from './acceptGame';
@@ -46,16 +46,18 @@ const init = ({ io, socket, db, user }) => {
       );
     },
     broadcastGame: async ({ gameId, toRoom = true }) => {
+      const game = db.get('games', gameId);
       (await applicableSockets({ io, socket, gameId, toRoom })).forEach(
         socketId => {
           const userId = db.get('sockets', socketId).userId;
-          const game = db.get('games', gameId);
+          const notMyBoard = without(Object.keys(game.boards || {}), userId);
           io.to(socketId).emit(
             'server::game',
             u(
               {
-                boards: u.omit(
-                  difference(Object.keys(game.boards || {}), [userId])
+                boards: notMyBoard.reduce(
+                  (obj, id) => ({ ...obj, [id]: u.omit('ships') }),
+                  {}
                 )
               },
               game
