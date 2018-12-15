@@ -1,10 +1,15 @@
 const userInit = ({ io, socket, db, user }) => (lsUser, fn) => {
-  if (lsUser?.id && lsUser.id !== user.id) {
-    db.changeId('users', user.id, lsUser.id);
-    db.update('sockets', user.socketId, { userId: lsUser.id });
-    user.updateScalar('id', lsUser.id);
+  const { id, name, registered } = lsUser;
+  if (id && id !== user.id) {
+    db.changeId('users', user.id, id);
+    db.update('sockets', socket.id, { userId: id });
+    user.updateScalar('id', id);
   }
-  db.update('users', user.id, lsUser);
+  db.update('users', user.id, {
+    name,
+    registered,
+    socketId: socket.id
+  });
   fn(db.get('users', user.id));
 };
 

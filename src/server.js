@@ -25,8 +25,7 @@ const main = () => {
 
   io.on('connection', socket => {
     const user = initState({
-      id: uuid(),
-      socketId: socket.id
+      id: uuid()
     });
 
     log(`user "${user.id}" connected`);
