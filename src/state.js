@@ -18,6 +18,7 @@ const init = (initialState = {}) => {
       state[type]
     );
     console.log(state);
+    return state.get(type, id);
   };
 
   state.remove = (type, id) => (state[type] = u(u.omit(id), state[type]));
