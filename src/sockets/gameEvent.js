@@ -75,6 +75,7 @@ const gameUpdateFromEvent = ({ game, event }) => {
 const getWinner = game =>
   [game.host, game.opponent].find(
     id =>
+      game.boards[id] &&
       game.boards[id].ships &&
       game.boards[id].ships.every(s => (s.hits || []).length === s.length)
   );
