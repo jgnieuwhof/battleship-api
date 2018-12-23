@@ -99,6 +99,7 @@ const gameEvent = ({ db, user, actions }) => ({ gameId, type, content }) => {
         state: 'done',
         winner: getWinner(updatedGame)
       });
+      actions.broadcastGames();
     }
     actions.broadcastGame({ gameId });
     actions.broadcastEvent({ gameId, event });
